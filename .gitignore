@@ -1,0 +1,30 @@
+# General
+.DS_Store
+.vscode/
+.idea/
+*.log
+
+# Frontend (React/Vite)
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+
+# Backend (Java/Spring Boot)
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+backend/help.md
+backend/.classpath
+backend/.project
+backend/.settings/
+
+# Smart Contracts (Hardhat)
+smart-contracts/node_modules/
+smart-contracts/artifacts/
+smart-contracts/cache/
+smart-contracts/coverage/
+smart-contracts/typechain-types/
+
+# Local Deployment Artifacts (Do NOT push these)
+smart-contracts/contract-address.txt
+backend/contract-address.txt
