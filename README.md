@@ -1,7 +1,5 @@
 # Gas-Efficient Time-Decaying Attribute-Based Access Control (TD-ABAC) for EHR
 
-> **Context Anchor:** This file must be updated with every major change to ensure context preservation across AI sessions.
-
 ## 1. Core Concept
 A "Self-Destructing" Digital Vault for Electronic Health Records.
 - **Problem:** Patients lose control of data once shared. Base paper solutions are slow (CP-ABE) and expensive (Active Revocation).
