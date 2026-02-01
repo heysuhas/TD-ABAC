@@ -9,8 +9,9 @@ import java.io.File;
 @Service
 public class BlockchainService {
 
-    // Config: Should match where Hardhat deployment is
-    private static final String WORKING_DIR = "C:/Users/heysu/Desktop/minor_project/smart-contracts";
+    // Config: Smart Contracts directory relative to Backend
+    // Assuming we run backend from 'backend/' folder.
+    private static final String WORKING_DIR = "../smart-contracts";
 
     // We need to store/know the address. For prototype, we'll try to find it or
     // expect it in a specific file.
