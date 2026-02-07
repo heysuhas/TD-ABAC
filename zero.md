@@ -90,3 +90,11 @@ We will implement the system and generate the following metrics to directly comp
 ### **7. Practical Use Case (The "Why")**
 
 **The "Second Opinion" Scenario:** A patient needs to share MRI scans with a specialist in another city for a quick consultation. They do not want the specialist to keep the data forever. Our system allows them to share the link with a **"48-hour self-destruct"** timer, ensuring data privacy and reducing the need for redundant, expensive medical tests.
+
+---
+
+### **8. Security/Privacy Properties**
+
+* **Time-Limited Access Enforcement:** Access is restricted by on-chain time-locks; once expired, the backend denies key release.
+* **Confidentiality-in-Transit/At-Rest:** Files are stored encrypted (AES-256) and only decrypted in memory when access is valid.
+* **Client-Side Capture Limitation (Important):** No browser-based viewer can fully prevent screen capture, downloads, or out-of-band recording once a user can view content. Mitigations include **per-session watermarking**, **short-lived view tokens**, **audit logging**, and optional **DRM-like browser controls** (where supported), but absolute prevention is not possible.
