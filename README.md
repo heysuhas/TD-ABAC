@@ -32,6 +32,14 @@ We must verify:
 2.  **Scalability:** Constant time O(1) for any duration (vs Linear).
 3.  **Revocation Cost:** 0 Gas (vs Active Tx).
 
+## 4.1 Research Novelty (What is new)
+Focus on what is *technically new* versus the base paper and why it matters:
+1. **Passive revocation via on-chain time-locks:** Access expiration is enforced by a smart contract time check; no re-encryption, no key updates, and no revocation gas costs.
+2. **Hybrid cryptographic architecture:** Heavy cryptography is off-chain (AES-256), while policy enforcement is on-chain, keeping trust without sacrificing throughput.
+3. **Constant-time access checks:** Access checks are O(1) (single timestamp comparison), unlike hash-chain approaches with linear cost growth.
+4. **Operational simplicity:** No attribute re-issuance or mass ciphertext updates; keys are released only within valid windows.
+5. **Threat-model clarity:** Explicitly acknowledges client-side capture limits and lists mitigations (watermarks, short-lived tokens, audit logs) instead of claiming absolute prevention.
+
 ## 5. Current Status
 - [x] Project Request Analysis
 - [x] Implementation Plan Created
@@ -135,12 +143,16 @@ npm run dev
 Access the UI at `http://localhost:5173`.*
 
 ## 7. Verification & Benchmarks
-### Encryption Speed (Target: <5ms)
+### Encryption Speed (Target: <5ms for small chunks; 1MB is hardware-dependent)
 Run the Java Benchmark:
 ```bash
 cd backend
 mvn test -Dtest=EncryptionBenchmark
 ```
+Notes:
+* The benchmark includes warmup iterations and reports median/average for both encryption and decryption.
+* Report CPU model, JVM version, and OS for reproducibility.
+* Use the median value for paper plots and the average for sanity checks.
 
 ### Scalability (Target: Constant Time)
 Run the Smart Contract Test:
