@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.crypto.SecretKey;
 
@@ -29,6 +30,8 @@ public class FileController {
 
     // In-memory Mock Storage for Prototype (Stores encrypted data + metadata)
     private final java.util.Map<String, FileMetadata> mockStorage = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final long VIEW_TOKEN_TTL_MS = 60_000;
+    private final java.util.Map<String, ViewToken> viewTokens = new java.util.concurrent.ConcurrentHashMap<>();
 
     private static class FileMetadata {
         final String encryptedContent; // Base64 String
@@ -39,6 +42,20 @@ public class FileController {
             this.encryptedContent = encryptedContent;
             this.originalFilename = originalFilename;
             this.contentType = contentType;
+        }
+    }
+
+    private static class ViewToken {
+        final String fileHash;
+        final long expiresAt;
+
+        ViewToken(String fileHash, long expiresAt) {
+            this.fileHash = fileHash;
+            this.expiresAt = expiresAt;
+        }
+
+        boolean isExpired() {
+            return System.currentTimeMillis() > expiresAt;
         }
     }
 
@@ -112,6 +129,77 @@ public class FileController {
             // 4. Return the ACTUAL file
             return ResponseEntity.ok()
                     .header("Content-Disposition", "attachment; filename=\"" + metadata.originalFilename + "\"")
+                    .header("Content-Type", metadata.contentType)
+                    .body(decryptedBytes);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body("Error: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/files/{fileHash}/view-token")
+    public ResponseEntity<?> createViewToken(@PathVariable String fileHash) {
+        boolean accessAllowed = blockchainService.checkAccess(fileHash);
+
+        if (!accessAllowed) {
+            return ResponseEntity.status(403).body("Access Denied: Time-Lock Expired on Blockchain");
+        }
+
+        if (!keyStore.containsKey(fileHash)) {
+            return ResponseEntity.status(404).body("File Key not found (Server Restarted?)");
+        }
+
+        if (!mockStorage.containsKey(fileHash)) {
+            return ResponseEntity.status(404).body("File Content not found (Server Restarted?)");
+        }
+
+        String token = UUID.randomUUID().toString();
+        long expiresAt = System.currentTimeMillis() + VIEW_TOKEN_TTL_MS;
+        viewTokens.put(token, new ViewToken(fileHash, expiresAt));
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("token", token);
+        response.put("expiresAt", new Date(expiresAt).toString());
+
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/files/{fileHash}/view")
+    public ResponseEntity<?> viewFile(@PathVariable String fileHash, @RequestParam("token") String token) {
+        ViewToken viewToken = viewTokens.get(token);
+
+        if (viewToken == null || viewToken.isExpired()) {
+            viewTokens.remove(token);
+            return ResponseEntity.status(403).body("View token expired or invalid");
+        }
+
+        if (!viewToken.fileHash.equals(fileHash)) {
+            return ResponseEntity.status(403).body("View token does not match requested file");
+        }
+
+        boolean accessAllowed = blockchainService.checkAccess(fileHash);
+        if (!accessAllowed) {
+            return ResponseEntity.status(403).body("Access Denied: Time-Lock Expired on Blockchain");
+        }
+
+        try {
+            if (!keyStore.containsKey(fileHash)) {
+                return ResponseEntity.status(404).body("File Key not found (Server Restarted?)");
+            }
+
+            if (!mockStorage.containsKey(fileHash)) {
+                return ResponseEntity.status(404).body("File Content not found (Server Restarted?)");
+            }
+
+            FileMetadata metadata = mockStorage.get(fileHash);
+            SecretKey key = keyStore.get(fileHash);
+            byte[] decryptedBytes = encryptionService.decrypt(metadata.encryptedContent, key);
+
+            viewTokens.remove(token);
+
+            return ResponseEntity.ok()
+                    .header("Content-Disposition", "inline; filename=\"" + metadata.originalFilename + "\"")
                     .header("Content-Type", metadata.contentType)
                     .body(decryptedBytes);
 
