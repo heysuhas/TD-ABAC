@@ -204,7 +204,7 @@ In summary, while both CP-ABE and TD-ABAC are attribute-based access control sch
 
 
 ### How's the access check done in O(1)?
-**Math:** Your Smart Contract performs exactly one primitive comparison:
+**Math:** Smart Contract performs exactly one primitive comparison:
 `Is Current_Time < Expiry_Time?`
 
 **Result:** This is just one CPU instruction. Whether you have 1 user or 1 billion users, checking this one specific condition takes the exact same constant amount of time. This is O(1).
