@@ -6,6 +6,9 @@ A "Self-Destructing" Digital Vault for Electronic Health Records.
 - **Solution:** Hybrid architecture. Off-chain AES encryption (fast) + On-chain Time-Locks (trust).
 - **Key Novelty:** **Passive Revocation**. Access rights expire automatically based on block timestamp. No gas cost to revoke.
 
+## Quick Reference
+- For architecture, tools/frameworks, and flow diagram see [`PROJECT_OVERVIEW.md`](PROJECT_OVERVIEW.md).
+
 ## 2. Technology Stack
 - **Frontend:** React + Tailwind CSS (Vite)
 - **Backend:** Java Spring Boot
