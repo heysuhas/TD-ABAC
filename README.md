@@ -194,6 +194,12 @@ cd ..
 python scripts/summarize_benchmarks.py
 ```
 
+4) **Generate a ready-to-cite benchmark report (Markdown):**
+```bash
+python scripts/analyze_benchmarks.py
+```
+Output: `benchmark_report.md`
+
 This enables immediate side-by-side plotting of:
 - stage-wise timing (base-style),
 - scaling trends up to long durations,
