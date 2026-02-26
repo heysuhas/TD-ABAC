@@ -6,6 +6,9 @@ A "Self-Destructing" Digital Vault for Electronic Health Records.
 - **Solution:** Hybrid architecture. Off-chain AES encryption (fast) + On-chain Time-Locks (trust).
 - **Key Novelty:** **Passive Revocation**. Access rights expire automatically based on block timestamp. No gas cost to revoke.
 
+## Quick Reference
+- For architecture, tools/frameworks, and flow diagram see [`PROJECT_OVERVIEW.md`](PROJECT_OVERVIEW.md).
+
 ## 2. Technology Stack
 - **Frontend:** React + Tailwind CSS (Vite)
 - **Backend:** Java Spring Boot
@@ -164,6 +167,46 @@ npx hardhat test
 ### Revocation Cost (Target: 0 Gas)
 - Passive revocation means NO transaction is needed to revoke access.
 - Cost = **0 Gas**. (Compared to Base Paper's key update transaction).
+
+
+### Reproducible CSV Benchmarks (Practical Runbook)
+
+To generate directly comparable, quantified metrics for plotting:
+
+1) **Backend AES metrics (20 runs for 1MB/5MB/10MB):**
+```bash
+cd backend
+mvn test -Dtest=EncryptionMetricsExporterTest
+```
+Output: `backend/benchmark-results/encryption_metrics.csv`
+
+2) **On-chain metrics (upload gas + access-check latency/gas across durations):**
+```bash
+cd smart-contracts
+npm install
+npm run benchmark:chain
+```
+Output: `smart-contracts/benchmark-results/chain_metrics.csv`
+
+Both CSV files share a common schema:
+`run_id,stage,input_size,duration_bucket,latency_ms,gas_used,bytes_sent,bytes_recv`
+
+3) **Summarize into directly comparable aggregates (avg/p95/gas/bytes):**
+```bash
+cd ..
+python scripts/summarize_benchmarks.py
+```
+
+4) **Generate a ready-to-cite benchmark report (Markdown):**
+```bash
+python scripts/analyze_benchmarks.py
+```
+Output: `benchmark_report.md`
+
+This enables immediate side-by-side plotting of:
+- stage-wise timing (base-style),
+- scaling trends up to long durations,
+- gas and communication overhead.
 
 
 ### How's it ABAC?
