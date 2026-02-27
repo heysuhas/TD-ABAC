@@ -29,11 +29,24 @@ async function main() {
 
     const tdabac = await hre.ethers.getContractAt("TDABAC", contractAddress);
 
+    const syncToWallClockTime = async () => {
+        const nowInSeconds = Math.floor(Date.now() / 1000);
+        const latestBlock = await hre.ethers.provider.getBlock("latest");
+        const nextTimestamp = Math.max(nowInSeconds, Number(latestBlock.timestamp) + 1);
+
+        await hre.network.provider.send("evm_setNextBlockTimestamp", [nextTimestamp]);
+        await hre.network.provider.send("evm_mine");
+    };
+
     if (command === "upload") {
         const tx = await tdabac.uploadFile(fileHash, duration);
         await tx.wait();
         console.log("UPLOAD_SUCCESS");
     } else if (command === "check") {
+        // On a local Hardhat node, block.timestamp only moves when a block is mined.
+        // Aligning to wall-clock time ensures time-lock checks actually expire.
+        await syncToWallClockTime();
+
         const allowed = await tdabac.checkAccess(fileHash);
         if (allowed) {
             console.log("ACCESS_GRANTED");
