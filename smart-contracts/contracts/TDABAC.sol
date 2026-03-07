@@ -37,9 +37,4 @@ contract TDABAC {
         return block.timestamp < fileRegistry[fileHash].expiryTimestamp;
     }
 
-    // Helper to get expiry, for frontend display
-    function getExpiry(string memory fileHash) public view returns (uint256) {
-        require(fileRegistry[fileHash].exists, "File not found");
-        return fileRegistry[fileHash].expiryTimestamp;
-    }
 }
