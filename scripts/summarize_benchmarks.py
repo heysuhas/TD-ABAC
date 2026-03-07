@@ -23,6 +23,14 @@ def as_int(value):
     return int(value)
 
 
+def calculate_p95(values):
+    if not values:
+        return None
+    ordered = sorted(values)
+    idx = max(0, min(len(ordered) - 1, round(0.95 * (len(ordered) - 1))))
+    return ordered[idx]
+
+
 def summarize(path):
     rows = []
     with path.open(newline="", encoding="utf-8") as f:
@@ -39,7 +47,9 @@ def summarize(path):
         grouped[(r["stage"], r["input_size"], r["duration_bucket"])].append(r)
 
     print(f"\n# Summary for {path.relative_to(ROOT)}")
-    print("stage,input_size,duration_bucket,runs,latency_avg_ms,latency_p95_ms,gas_avg,total_bytes_sent,total_bytes_recv")
+    print(
+        "stage,input_size,duration_bucket,runs,latency_avg_ms,latency_p95_ms,gas_avg,total_bytes_sent,total_bytes_recv"
+    )
 
     for key in sorted(grouped.keys()):
         samples = grouped[key]
@@ -47,11 +57,7 @@ def summarize(path):
         gas_values = [s["gas_used"] for s in samples if s["gas_used"] is not None]
 
         latency_avg = statistics.mean(latencies) if latencies else None
-        latency_p95 = None
-        if latencies:
-            ordered = sorted(latencies)
-            idx = max(0, min(len(ordered) - 1, round(0.95 * (len(ordered) - 1))))
-            latency_p95 = ordered[idx]
+        latency_p95 = calculate_p95(latencies)
 
         gas_avg = statistics.mean(gas_values) if gas_values else None
         total_bytes_sent = sum(s["bytes_sent"] for s in samples)
@@ -76,7 +82,9 @@ def main():
             print(f"Missing input CSV: {path.relative_to(ROOT)}")
 
     if not found:
-        raise SystemExit("No benchmark CSV files found. Run benchmark generators first.")
+        raise SystemExit(
+            "No benchmark CSV files found. Run benchmark generators first."
+        )
 
 
 if __name__ == "__main__":
