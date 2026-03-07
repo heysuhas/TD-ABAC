@@ -2,15 +2,15 @@ const hre = require("hardhat");
 const fs = require("fs");
 
 async function main() {
-    const tdabac = await hre.ethers.deployContract("TDABAC");
-    await tdabac.waitForDeployment();
-    console.log(`TDABAC deployed to ${tdabac.target}`);
-
-    // Write address to file for backend to read
-    fs.writeFileSync("contract-address.txt", tdabac.target);
+  const TDABAC = await hre.ethers.getContractFactory("TDABAC");
+  const tdabac = await TDABAC.deploy();
+  await tdabac.waitForDeployment();
+  const address = await tdabac.getAddress();
+  console.log("TDABAC deployed to:", address);
+  fs.writeFileSync("contract-address.txt", address);
 }
 
 main().catch((error) => {
-    console.error(error);
-    process.exitCode = 1;
+  console.error(error);
+  process.exitCode = 1;
 });
