@@ -17,10 +17,18 @@ public class EncryptionService {
     private static final int IV_LENGTH_BYTE = 12;
     private static final int AES_KEY_BIT = 256;
 
+    private static final ThreadLocal<KeyGenerator> keyGenThreadLocal = ThreadLocal.withInitial(() -> {
+        try {
+            KeyGenerator keyGen = KeyGenerator.getInstance("AES");
+            keyGen.init(AES_KEY_BIT);
+            return keyGen;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to initialize KeyGenerator", e);
+        }
+    });
+
     public SecretKey generateKey() throws Exception {
-        KeyGenerator keyGen = KeyGenerator.getInstance("AES");
-        keyGen.init(AES_KEY_BIT);
-        return keyGen.generateKey();
+        return keyGenThreadLocal.get().generateKey();
     }
 
     public String encrypt(byte[] fileData, SecretKey secretKey) throws Exception {
