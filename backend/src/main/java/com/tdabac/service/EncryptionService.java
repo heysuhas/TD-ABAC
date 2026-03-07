@@ -57,16 +57,4 @@ public class EncryptionService {
         return cipher.doFinal(cipherText);
     }
 
-    // Helper to convert Key to String for storage if needed (though we said keys
-    // are ephemeral)
-    // For the purpose of the prototype, we assume we might return the key to the
-    // user or store strictly in memory.
-    public String keyToString(SecretKey secretKey) {
-        return Base64.getEncoder().encodeToString(secretKey.getEncoded());
-    }
-
-    public SecretKey stringToKey(String keyStr) {
-        byte[] decoded = Base64.getDecoder().decode(keyStr);
-        return new SecretKeySpec(decoded, 0, decoded.length, "AES");
-    }
 }
