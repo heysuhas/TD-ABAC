@@ -1,0 +1,4 @@
+system,reference,encrypt_1mb_ms,decrypt_1mb_ms,access_check_ms,onchain_update_gas
+CP-ABE (literature range midpoint),README stated range 200ms-3000ms (midpoint used),1600,1700,15,210000
+A2BE-TimeLock (representative),internal comparative assumption for active revocation style baseline,480,530,6,145000
+RBAC + centralized DB ACL (representative),traditional centralized ACL stack reference point,90,95,3.5,0

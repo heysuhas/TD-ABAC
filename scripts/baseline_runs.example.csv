@@ -1,0 +1,12 @@
+system,reference,stage,input_size,latency_ms,gas_used
+CP-ABE(OpenABE),https://github.com/zeutro/openabe,encrypt,1MB,420.10,NA
+CP-ABE(OpenABE),https://github.com/zeutro/openabe,decrypt,1MB,463.80,NA
+CP-ABE(OpenABE),https://github.com/zeutro/openabe,access_check,metadata,8.20,NA
+CP-ABE(OpenABE),https://github.com/zeutro/openabe,onchain_update,metadata,NA,198000
+A2BE-Revocable,doi:placeholder,encrypt,1MB,510.22,NA
+A2BE-Revocable,doi:placeholder,decrypt,1MB,560.09,NA
+A2BE-Revocable,doi:placeholder,access_check,metadata,6.70,NA
+A2BE-Revocable,doi:placeholder,onchain_update,metadata,NA,143000
+RBAC-ACL,internal benchmark,encrypt,1MB,95.40,NA
+RBAC-ACL,internal benchmark,decrypt,1MB,101.30,NA
+RBAC-ACL,internal benchmark,access_check,metadata,3.10,NA

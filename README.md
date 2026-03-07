@@ -173,6 +173,28 @@ npx hardhat test
 
 To generate directly comparable, quantified metrics for plotting:
 
+#### A) Cross-system evaluation protocol (same steps on any machine)
+Use this exact sequence so results are comparable across laptops/servers/CI:
+
+1. **Record environment metadata** (CPU, RAM, OS, Java, Node, Maven, npm versions).
+2. **Use fresh processes** (restart backend test JVM and Hardhat node before each full run).
+3. **Run at least 3 full rounds** and keep all raw CSVs.
+4. **Report median across rounds** for paper tables, and p95 for tail-latency view.
+5. **Never mix baselines and TD-ABAC from different hardware** unless explicitly normalized.
+
+Suggested environment capture:
+```bash
+uname -a
+lscpu
+free -h
+java -version
+node -v
+npm -v
+mvn -v
+```
+
+#### B) TD-ABAC benchmark generation
+
 1) **Backend AES metrics (20 runs for 1MB/5MB/10MB):**
 ```bash
 cd backend
@@ -202,6 +224,45 @@ python scripts/summarize_benchmarks.py
 python scripts/analyze_benchmarks.py
 ```
 Output: `benchmark_report.md`
+
+5) **Generate comparative analysis vs CP-ABE and other baseline systems:**
+```bash
+python scripts/compare_with_baselines.py
+```
+Outputs: `comparative_analysis.md`, `benchmark_comparison.csv`
+
+> Baseline reference values are maintained in `scripts/baseline_systems.csv`.
+> Update those rows to your exact cited papers before final manuscript submission.
+
+
+
+#### C) Running CP-ABE and other baselines on your system (measured, not assumed)
+To compare fairly, run each external baseline locally and convert results into the same schema used here.
+
+1) **Collect raw baseline measurements** into `scripts/baseline_runs.csv` using this schema:
+`system,reference,stage,input_size,latency_ms,gas_used`
+
+- `stage` must include: `encrypt`, `decrypt`, `access_check`, and optional `onchain_update`.
+- Start from template: `scripts/baseline_runs.example.csv`
+
+2) **Build summarized baseline table used by comparison scripts:**
+```bash
+python scripts/build_baseline_summary.py
+```
+Output: `scripts/baseline_systems.csv`
+
+3) **Re-run comparative analysis:**
+```bash
+python scripts/compare_with_baselines.py
+```
+Outputs: `comparative_analysis.md`, `benchmark_comparison.csv`
+
+##### Practical options to run CP-ABE / other systems
+- **CP-ABE (OpenABE, Charm-Crypto, etc.):** run their encrypt/decrypt benchmarks for 1MB payload and log latencies into `baseline_runs.csv`.
+- **Revocable ABE / Proxy Re-Encryption variants:** capture same metrics (`encrypt`, `decrypt`, `access_check`, `onchain_update`).
+- **Centralized RBAC/ACL baseline:** capture API-side `access_check` latency and any crypto overhead used in that stack.
+
+> Important: the repository does **not** ship a CP-ABE implementation yet. You can still perform apples-to-apples comparison by importing measured outputs from external CP-ABE toolchains through `baseline_runs.csv` and the summary script above.
 
 This enables immediate side-by-side plotting of:
 - stage-wise timing (base-style),
