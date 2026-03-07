@@ -101,6 +101,17 @@ public class FileController {
         }
     }
 
+    private ResponseEntity<?> checkFileAvailability(String fileHash) {
+        if (!keyStore.containsKey(fileHash)) {
+            return ResponseEntity.status(404).body("File Key not found (Server Restarted?)");
+        }
+
+        if (!mockStorage.containsKey(fileHash)) {
+            return ResponseEntity.status(404).body("File Content not found (Server Restarted?)");
+        }
+        return null;
+    }
+
     @GetMapping("/access/{fileHash}")
     public ResponseEntity<?> accessFile(@PathVariable String fileHash) {
         // 1. Check Blockchain Time-Lock
@@ -111,12 +122,9 @@ public class FileController {
         }
 
         try {
-            if (!keyStore.containsKey(fileHash)) {
-                return ResponseEntity.status(404).body("File Key not found (Server Restarted?)");
-            }
-
-            if (!mockStorage.containsKey(fileHash)) {
-                return ResponseEntity.status(404).body("File Content not found (Server Restarted?)");
+            ResponseEntity<?> errorResponse = checkFileAvailability(fileHash);
+            if (errorResponse != null) {
+                return errorResponse;
             }
 
             // 2. Retrieve Data
@@ -146,12 +154,9 @@ public class FileController {
             return ResponseEntity.status(403).body("Access Denied: Time-Lock Expired on Blockchain");
         }
 
-        if (!keyStore.containsKey(fileHash)) {
-            return ResponseEntity.status(404).body("File Key not found (Server Restarted?)");
-        }
-
-        if (!mockStorage.containsKey(fileHash)) {
-            return ResponseEntity.status(404).body("File Content not found (Server Restarted?)");
+        ResponseEntity<?> errorResponse = checkFileAvailability(fileHash);
+        if (errorResponse != null) {
+            return errorResponse;
         }
 
         String token = UUID.randomUUID().toString();
@@ -184,12 +189,9 @@ public class FileController {
         }
 
         try {
-            if (!keyStore.containsKey(fileHash)) {
-                return ResponseEntity.status(404).body("File Key not found (Server Restarted?)");
-            }
-
-            if (!mockStorage.containsKey(fileHash)) {
-                return ResponseEntity.status(404).body("File Content not found (Server Restarted?)");
+            ResponseEntity<?> errorResponse = checkFileAvailability(fileHash);
+            if (errorResponse != null) {
+                return errorResponse;
             }
 
             FileMetadata metadata = mockStorage.get(fileHash);
