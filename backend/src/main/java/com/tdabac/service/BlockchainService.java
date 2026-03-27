@@ -25,6 +25,7 @@ public class BlockchainService {
     // we update deploy.js.
     // Let's UPDATE deploy.js to write the address to 'address.txt'!
     private String contractAddress = ""; // loaded dynamically
+    private long lastModifiedTime = 0; // cache invalidation timestamp
 
     public void uploadFile(String fileHash, long duration) throws Exception {
         loadAddress();
@@ -43,11 +44,15 @@ public class BlockchainService {
     }
 
     private void loadAddress() throws Exception {
-        // Always reload to support redeployments without restarting backend
+        // Reload to support redeployments without restarting backend, but only if modified
         File file = new File(WORKING_DIR + "/contract-address.txt");
         if (file.exists()) {
-            contractAddress = java.nio.file.Files.readString(file.toPath()).trim();
-            System.out.println("Loaded Contract Address: " + contractAddress);
+            long currentModifiedTime = file.lastModified();
+            if (currentModifiedTime > lastModifiedTime || contractAddress.isEmpty()) {
+                contractAddress = java.nio.file.Files.readString(file.toPath()).trim();
+                lastModifiedTime = currentModifiedTime;
+                System.out.println("Loaded Contract Address: " + contractAddress);
+            }
         } else {
             throw new RuntimeException("Contract Address not found. Please run deploy.js first!");
         }
