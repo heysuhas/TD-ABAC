@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Download, AlertCircle, Clock, ShieldX, Key, ArrowLeft, Share2, CheckCircle2, UserPlus, Link, Copy } from 'lucide-react';
+import { Download, AlertCircle, Clock, ShieldX, Key, ArrowLeft, Share2, CheckCircle2, UserPlus, Link, Copy, Eye } from 'lucide-react';
 import { ethers } from 'ethers';
 
 const generateUserWallet = (email) => {
@@ -31,6 +31,10 @@ export default function Access() {
   const [activeTab, setActiveTab] = useState(isSharingInitial ? 'share' : 'access');
   const [shareLink, setShareLink] = useState('');
   const [copied, setCopied] = useState(false);
+  const [viewUrl, setViewUrl] = useState('');
+  
+  const [isOwner, setIsOwner] = useState(false);
+  const [shareInfo, setShareInfo] = useState(null);
 
   const navigate = useNavigate();
 
@@ -50,6 +54,33 @@ export default function Access() {
     }
   }, [autoAccessHash, hash]);
 
+  useEffect(() => {
+    if (fileHash && walletAddress) {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080/api';
+      
+      fetch(`${backendUrl}/files/${fileHash}/metadata`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+            if (data && data.ownerAddress === walletAddress) {
+                setIsOwner(true);
+            } else {
+                setIsOwner(false);
+                // Switch to access tab if they land on share but aren't owner
+                if (activeTab === 'share') setActiveTab('access');
+                
+                fetch(`${backendUrl}/files/${fileHash}/share-info?recipientAddress=${walletAddress}`)
+                    .then(res => res.ok ? res.json() : null)
+                    .then(info => setShareInfo(info))
+                    .catch(e => console.error(e));
+            }
+        })
+        .catch(e => console.error(e));
+    } else {
+        setIsOwner(false);
+        setShareInfo(null);
+    }
+  }, [fileHash, walletAddress, activeTab]);
+
   const getDurationInSeconds = () => {
     const val = parseInt(duration);
     if (isNaN(val)) return 0;
@@ -59,45 +90,27 @@ export default function Access() {
     return val;
   };
 
-  const handleAccess = async () => {
+  const handleView = async () => {
     if (!fileHash) return;
 
     setLoading(true);
     setStatus('checking');
     setMessage('');
+    setViewUrl('');
 
     try {
       const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080/api';
 
-      const response = await fetch(`${backendUrl}/access/${fileHash}?userAddress=${walletAddress}`, {
-        method: 'GET',
+      const response = await fetch(`${backendUrl}/files/${fileHash}/view-token?userAddress=${walletAddress}`, {
+        method: 'POST',
       });
 
       if (response.ok) {
-        // Handle file download
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-
-        // Try to get filename from header
-        const disposition = response.headers.get('Content-Disposition');
-        let filename = 'downloaded_file';
-        if (disposition && disposition.indexOf('filename=') !== -1) {
-            const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
-            const matches = filenameRegex.exec(disposition);
-            if (matches != null && matches[1]) {
-                filename = matches[1].replace(/['"]/g, '');
-            }
-        }
-
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-
+        const data = await response.json();
+        
+        setViewUrl(`${backendUrl}/files/${fileHash}/view?token=${data.token}&userAddress=${walletAddress}`);
         setStatus('success');
-        setMessage('Access Granted: File downloaded successfully.');
+        setMessage('Access Granted: You are now viewing the secure file.');
       } else {
         const errorText = await response.text();
         setStatus('error');
@@ -145,6 +158,9 @@ export default function Access() {
       // In a real app, the frontend would sign a typed data message and send the signature,
       // or sign the transaction directly and send the raw transaction.
       // For this MVP, we send the private key to the backend over HTTPS.
+      const { data: { session } } = await supabase.auth.getSession();
+      const senderEmail = session?.user?.email || 'Unknown';
+      
       const response = await fetch(`${backendUrl}/files/${fileHash}/share`, {
         method: 'POST',
         headers: {
@@ -155,6 +171,7 @@ export default function Access() {
             shareWithAddress: targetWallet.address,
             duration: getDurationInSeconds(),
             recipientEmail: shareEmail,
+            senderEmail: senderEmail,
             privateKey: wallet.privateKey
         })
       });
@@ -207,17 +224,19 @@ export default function Access() {
             {/* Tabs */}
             <div className="flex border-b border-slate-800 bg-slate-900/80">
                 <button
-                    onClick={() => { setActiveTab('access'); setStatus('idle'); setMessage(''); }}
+                    onClick={() => { setActiveTab('access'); setStatus('idle'); setMessage(''); setViewUrl(''); }}
                     className={`flex-1 py-4 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${activeTab === 'access' ? 'text-blue-400 border-b-2 border-blue-500 bg-blue-500/5' : 'text-slate-400 hover:text-slate-200'}`}
                 >
-                    <Download className="w-4 h-4" /> Download Access
+                    <Eye className="w-4 h-4" /> Secure Viewer
                 </button>
+                {(!fileHash || isOwner) && (
                 <button
                     onClick={() => { setActiveTab('share'); setStatus('idle'); setMessage(''); }}
                     className={`flex-1 py-4 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${activeTab === 'share' ? 'text-emerald-400 border-b-2 border-emerald-500 bg-emerald-500/5' : 'text-slate-400 hover:text-slate-200'}`}
                 >
                     <Share2 className="w-4 h-4" /> Share File
                 </button>
+                )}
             </div>
 
             <div className="p-8">
@@ -239,6 +258,16 @@ export default function Access() {
                 {/* Content */}
                 {activeTab === 'access' ? (
                     <div className="space-y-6">
+                        {fileHash && !isOwner && shareInfo && (
+                            <div className="bg-slate-800/40 border border-slate-700/50 p-4 rounded-xl mb-2">
+                                <h3 className="text-sm font-medium text-slate-300 mb-2">Share Details</h3>
+                                <div className="space-y-1 text-sm text-slate-400">
+                                    <p><span className="text-slate-500">Shared By:</span> {shareInfo.senderEmail}</p>
+                                    <p><span className="text-slate-500">Shared At:</span> {new Date(shareInfo.timeShared).toLocaleString()}</p>
+                                    <p><span className="text-slate-500">Expires At:</span> <span className="text-emerald-400">{new Date(shareInfo.expiryTime).toLocaleString()}</span></p>
+                                </div>
+                            </div>
+                        )}
                         <div>
                             <label className="block text-sm font-medium text-slate-400 mb-2">File Hash (IPFS CID)</label>
                             <div className="relative">
@@ -254,7 +283,7 @@ export default function Access() {
                         </div>
 
                         <button
-                            onClick={handleAccess}
+                            onClick={handleView}
                             disabled={!fileHash || loading}
                             className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-3 rounded-xl transition-all shadow-lg shadow-blue-500/20 flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
@@ -262,10 +291,21 @@ export default function Access() {
                                 <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                             ) : (
                                 <>
-                                    <Download className="w-5 h-5" /> Decrypt & Download
+                                    <Eye className="w-5 h-5" /> Decrypt & View
                                 </>
                             )}
                         </button>
+                        
+                        {viewUrl && status === 'success' && (
+                            <div className="mt-6 border border-slate-700/50 rounded-xl overflow-hidden h-[600px] bg-slate-900 shadow-inner">
+                                <iframe 
+                                    src={viewUrl + "#toolbar=0"} 
+                                    className="w-full h-full border-none" 
+                                    title="Secure Document Viewer"
+                                    onContextMenu={(e) => e.preventDefault()}
+                                />
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <div className="space-y-6">

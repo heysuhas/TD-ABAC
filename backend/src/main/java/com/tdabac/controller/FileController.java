@@ -44,13 +44,32 @@ public class FileController {
         final String encryptedContent; // Base64 String
         final String originalFilename;
         final String contentType;
+        final String ownerAddress;
+        final long expiryTimestamp;
 
-        FileMetadata(String encryptedContent, String originalFilename, String contentType) {
+        FileMetadata(String encryptedContent, String originalFilename, String contentType, String ownerAddress, long expiryTimestamp) {
             this.encryptedContent = encryptedContent;
             this.originalFilename = originalFilename;
             this.contentType = contentType;
+            this.ownerAddress = ownerAddress;
+            this.expiryTimestamp = expiryTimestamp;
         }
     }
+
+    private static class ShareInfo {
+        public final String senderEmail;
+        public final long timeShared;
+        public final long expiryTime;
+
+        ShareInfo(String senderEmail, long timeShared, long expiryTime) {
+            this.senderEmail = senderEmail;
+            this.timeShared = timeShared;
+            this.expiryTime = expiryTime;
+        }
+    }
+
+    // fileHash -> (recipientAddress -> ShareInfo)
+    private final Map<String, Map<String, ShareInfo>> shareDetails = new ConcurrentHashMap<>();
 
     private static class ViewToken {
         final String fileHash;
@@ -88,8 +107,9 @@ public class FileController {
             // 3. Upload to IPFS (Mock) & Store in Memory
             String fileHash = ipfsService.uploadFile(encryptedContent.getBytes());
 
+            long expiryTimestamp = System.currentTimeMillis() + (duration * 1000);
             mockStorage.put(fileHash,
-                    new FileMetadata(encryptedContent, file.getOriginalFilename(), file.getContentType()));
+                    new FileMetadata(encryptedContent, file.getOriginalFilename(), file.getContentType(), userAddress, expiryTimestamp));
 
             // 4. Store Key temporarily (Valid window)
             keyStore.put(fileHash, key);
@@ -232,10 +252,15 @@ public class FileController {
             @RequestParam("shareWithAddress") String shareWithAddress,
             @RequestParam("duration") Long duration,
             @RequestParam("recipientEmail") String recipientEmail,
+            @RequestParam(value = "senderEmail", required = false) String senderEmail,
             @RequestParam(value = "privateKey", required = false) String privateKey) {
         try {
             blockchainService.shareFile(fileHash, ownerAddress, shareWithAddress, duration, privateKey);
             
+            long expiryTime = System.currentTimeMillis() + (duration * 1000);
+            ShareInfo info = new ShareInfo(senderEmail != null ? senderEmail : "Unknown", System.currentTimeMillis(), expiryTime);
+            shareDetails.computeIfAbsent(fileHash, k -> new ConcurrentHashMap<>()).put(shareWithAddress, info);
+
             // Send email
             String shareLink = "http://localhost:5173/access/" + fileHash + "?token=" + fileHash;
             emailService.sendShareInvitation(recipientEmail, fileHash, shareLink);
@@ -278,9 +303,25 @@ public class FileController {
         if (metadata == null) {
             return ResponseEntity.status(404).body("File not found");
         }
-        Map<String, String> response = new HashMap<>();
+        Map<String, Object> response = new HashMap<>();
         response.put("filename", metadata.originalFilename);
         response.put("contentType", metadata.contentType);
+        response.put("ownerAddress", metadata.ownerAddress);
+        response.put("expiryTimestamp", metadata.expiryTimestamp);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/files/{fileHash}/share-info")
+    public ResponseEntity<?> getShareInfo(@PathVariable String fileHash, @RequestParam("recipientAddress") String recipientAddress) {
+        Map<String, ShareInfo> fileShares = shareDetails.get(fileHash);
+        if (fileShares == null || !fileShares.containsKey(recipientAddress)) {
+            return ResponseEntity.status(404).body("Share info not found");
+        }
+        ShareInfo info = fileShares.get(recipientAddress);
+        Map<String, Object> response = new HashMap<>();
+        response.put("senderEmail", info.senderEmail);
+        response.put("timeShared", info.timeShared);
+        response.put("expiryTime", info.expiryTime);
         return ResponseEntity.ok(response);
     }
 }
