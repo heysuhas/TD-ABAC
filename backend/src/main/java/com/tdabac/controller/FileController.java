@@ -18,7 +18,7 @@ import javax.crypto.SecretKey;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "*") // Allow Frontend access
+@CrossOrigin(origins = "${app.cors.allowed-origins}") // Allow Frontend access
 public class FileController {
 
     private static final Logger logger = LoggerFactory.getLogger(FileController.class);
