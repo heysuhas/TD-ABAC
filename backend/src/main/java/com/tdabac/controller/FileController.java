@@ -28,6 +28,7 @@ public class FileController {
     private final EncryptionService encryptionService;
     private final IPFSService ipfsService;
     private final BlockchainService blockchainService;
+    private final com.tdabac.service.EmailService emailService;
 
     // In-memory key store (For prototype ONLY). Real Production uses Key Management
     // Service (AWS KMS etc).
@@ -66,10 +67,11 @@ public class FileController {
     }
 
     public FileController(EncryptionService encryptionService, IPFSService ipfsService,
-            BlockchainService blockchainService) {
+            BlockchainService blockchainService, com.tdabac.service.EmailService emailService) {
         this.encryptionService = encryptionService;
         this.ipfsService = ipfsService;
         this.blockchainService = blockchainService;
+        this.emailService = emailService;
     }
 
     @PostMapping("/upload")
@@ -228,9 +230,16 @@ public class FileController {
     public ResponseEntity<?> shareFile(@PathVariable String fileHash,
             @RequestParam("ownerAddress") String ownerAddress,
             @RequestParam("shareWithAddress") String shareWithAddress,
+            @RequestParam("duration") Long duration,
+            @RequestParam("recipientEmail") String recipientEmail,
             @RequestParam(value = "privateKey", required = false) String privateKey) {
         try {
-            blockchainService.shareFile(fileHash, ownerAddress, shareWithAddress, privateKey);
+            blockchainService.shareFile(fileHash, ownerAddress, shareWithAddress, duration, privateKey);
+            
+            // Send email
+            String shareLink = "http://localhost:5173/access/" + fileHash + "?token=" + fileHash;
+            emailService.sendShareInvitation(recipientEmail, fileHash, shareLink);
+
             Map<String, String> response = new HashMap<>();
             response.put("status", "success");
             response.put("message", "File shared successfully");

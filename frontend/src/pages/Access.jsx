@@ -22,6 +22,8 @@ export default function Access() {
 
   const [fileHash, setFileHash] = useState(hash || autoAccessHash || '');
   const [shareEmail, setShareEmail] = useState('');
+  const [duration, setDuration] = useState('');
+  const [durationUnit, setDurationUnit] = useState('minutes');
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('idle'); // idle, checking, success, error, sharing
   const [message, setMessage] = useState('');
@@ -47,6 +49,15 @@ export default function Access() {
       setFileHash(autoAccessHash);
     }
   }, [autoAccessHash, hash]);
+
+  const getDurationInSeconds = () => {
+    const val = parseInt(duration);
+    if (isNaN(val)) return 0;
+    if (durationUnit === 'minutes') return val * 60;
+    if (durationUnit === 'hours') return val * 3600;
+    if (durationUnit === 'days') return val * 86400;
+    return val;
+  };
 
   const handleAccess = async () => {
     if (!fileHash) return;
@@ -102,7 +113,7 @@ export default function Access() {
   };
 
   const handleShare = async () => {
-    if (!fileHash || !shareEmail) return;
+    if (!fileHash || !shareEmail || !duration) return;
     setLoading(true);
     setMessage('');
 
@@ -142,6 +153,8 @@ export default function Access() {
         body: new URLSearchParams({
             ownerAddress: walletAddress,
             shareWithAddress: targetWallet.address,
+            duration: getDurationInSeconds(),
+            recipientEmail: shareEmail,
             privateKey: wallet.privateKey
         })
       });
@@ -279,14 +292,38 @@ export default function Access() {
                                     className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-11 pr-4 text-white focus:outline-none focus:border-emerald-500"
                                 />
                             </div>
-                            <p className="text-xs text-slate-500 mt-2 flex items-center gap-1">
-                                <Clock className="w-3 h-3" /> Target user will inherit the remaining file duration.
-                            </p>
+                            <div className="bg-slate-800/30 rounded-2xl p-6 border border-slate-700/50 mt-4">
+                                <label className="block text-sm font-medium text-slate-300 mb-4 flex items-center gap-2">
+                                    <Clock className="w-4 h-4 text-emerald-400" /> Share Duration
+                                </label>
+                                <div className="flex gap-4">
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        value={duration}
+                                        onChange={(e) => setDuration(e.target.value)}
+                                        placeholder="e.g. 10"
+                                        className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                                    />
+                                    <select
+                                        value={durationUnit}
+                                        onChange={(e) => setDurationUnit(e.target.value)}
+                                        className="w-32 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-emerald-500 transition-colors appearance-none"
+                                    >
+                                        <option value="minutes">Minutes</option>
+                                        <option value="hours">Hours</option>
+                                        <option value="days">Days</option>
+                                    </select>
+                                </div>
+                                <p className="text-xs text-slate-500 mt-3 flex items-center gap-1">
+                                    <Clock className="w-3 h-3" /> Target user will lose access automatically after this time.
+                                </p>
+                            </div>
                         </div>
 
                         <button
                             onClick={handleShare}
-                            disabled={!fileHash || !shareEmail || loading}
+                            disabled={!fileHash || !shareEmail || !duration || loading}
                             className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-3 rounded-xl transition-all shadow-lg shadow-emerald-500/20 flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                              {loading ? (

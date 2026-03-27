@@ -49,9 +49,9 @@ public class BlockchainService {
         }
     }
 
-    public void shareFile(String fileHash, String ownerAddress, String shareWithAddress, String privateKey) throws Exception {
+    public void shareFile(String fileHash, String ownerAddress, String shareWithAddress, long duration, String privateKey) throws Exception {
         loadAddress();
-        runHardhatScript("share", fileHash, "0", ownerAddress, shareWithAddress, privateKey);
+        runHardhatScript("share", fileHash, String.valueOf(duration), ownerAddress, shareWithAddress, privateKey);
     }
 
     public String[] getUserFiles(String userAddress) throws Exception {
@@ -103,8 +103,13 @@ public class BlockchainService {
 
         // Use Environment Variables to pass data to the script
         // This avoids Hardhat CLI argument parsing issues entirely.
-        ProcessBuilder builder = new ProcessBuilder(
-                "sh", "-c", "npx hardhat run scripts/interact.js --network localhost");
+        boolean isWindows = System.getProperty("os.name").toLowerCase().startsWith("windows");
+        ProcessBuilder builder;
+        if (isWindows) {
+            builder = new ProcessBuilder("cmd.exe", "/c", "npx hardhat run scripts/interact.js --network localhost");
+        } else {
+            builder = new ProcessBuilder("sh", "-c", "npx hardhat run scripts/interact.js --network localhost");
+        }
         builder.directory(new File(WORKING_DIR));
 
         java.util.Map<String, String> env = builder.environment();

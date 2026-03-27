@@ -25,13 +25,15 @@ public class FileControllerSecurityTest {
     private EncryptionService encryptionService;
     private IPFSService ipfsService;
     private BlockchainService blockchainService;
+    private com.tdabac.service.EmailService emailService;
 
     @BeforeEach
     void setUp() {
         encryptionService = mock(EncryptionService.class);
         ipfsService = mock(IPFSService.class);
         blockchainService = mock(BlockchainService.class);
-        fileController = new FileController(encryptionService, ipfsService, blockchainService);
+        emailService = mock(com.tdabac.service.EmailService.class);
+        fileController = new FileController(encryptionService, ipfsService, blockchainService, emailService);
     }
 
     @Test

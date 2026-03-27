@@ -71,7 +71,7 @@ async function main() {
             console.error("ERROR: Missing SHARE_WITH_ADDRESS for share command");
             process.exit(1);
         }
-        const tx = await tdabacConnected.shareFile(fileHash, shareWithAddressStr);
+        const tx = await tdabacConnected.shareFile(fileHash, shareWithAddressStr, duration);
         await tx.wait();
         console.log("SHARE_SUCCESS");
     } else if (command === "check") {

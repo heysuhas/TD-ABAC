@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { UploadCloud, File, X, CheckCircle2, Loader2, ArrowLeft, ShieldCheck, HardDrive, Link, Lock } from 'lucide-react';
+import { UploadCloud, File, X, CheckCircle2, Loader2, ArrowLeft, ShieldCheck, HardDrive, Link, Lock, Clock } from 'lucide-react';
 import { ethers } from 'ethers';
 
 const generateUserWallet = (email) => {

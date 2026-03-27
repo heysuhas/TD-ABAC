@@ -17,8 +17,8 @@ contract TDABAC {
     // Mapping from an address to an array of fileHashes shared with this address
     mapping(address => string[]) public sharedFiles;
 
-    // Mapping from fileHash to mapping of address to shared status
-    mapping(string => mapping(address => bool)) public fileSharedWith;
+    // Mapping from fileHash to mapping of address to expiry timestamp
+    mapping(string => mapping(address => uint256)) public shareExpiry;
 
     event FileUploaded(string fileHash, address owner, uint256 expiryTimestamp);
     event FileShared(string fileHash, address owner, address sharedWith);
@@ -40,14 +40,26 @@ contract TDABAC {
         emit FileUploaded(fileHash, msg.sender, expiry);
     }
     
-    // Share file with another user
-    function shareFile(string memory fileHash, address userAddress) public {
+    // Share file with another user for a specific duration
+    function shareFile(string memory fileHash, address userAddress, uint256 durationInSeconds) public {
         require(fileRegistry[fileHash].exists, "File not found");
         require(fileRegistry[fileHash].owner == msg.sender, "Only owner can share");
-        require(!fileSharedWith[fileHash][userAddress], "Already shared with this user");
+        require(shareExpiry[fileHash][userAddress] == 0 || block.timestamp >= shareExpiry[fileHash][userAddress], "Already shared and not expired");
 
-        fileSharedWith[fileHash][userAddress] = true;
-        sharedFiles[userAddress].push(fileHash);
+        shareExpiry[fileHash][userAddress] = block.timestamp + durationInSeconds;
+        
+        // Only push to sharedFiles array if they were not already on the list (to prevent duplicates if re-shared)
+        bool alreadyInList = false;
+        for (uint i = 0; i < sharedFiles[userAddress].length; i++) {
+            // Using keccak256 to compare strings in memory
+            if (keccak256(abi.encodePacked(sharedFiles[userAddress][i])) == keccak256(abi.encodePacked(fileHash))) {
+                alreadyInList = true;
+                break;
+            }
+        }
+        if (!alreadyInList) {
+            sharedFiles[userAddress].push(fileHash);
+        }
 
         emit FileShared(fileHash, msg.sender, userAddress);
     }
@@ -78,8 +90,8 @@ contract TDABAC {
             return true;
         }
 
-        // Check if shared with user
-        return fileSharedWith[fileHash][userAddress];
+        // Check if shared with user and not expired
+        return shareExpiry[fileHash][userAddress] > block.timestamp;
     }
 
     // Helper to get expiry, for frontend display
