@@ -5,9 +5,13 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.concurrent.TimeUnit;
 import java.io.File;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class BlockchainService {
+
+    private static final Logger logger = LoggerFactory.getLogger(BlockchainService.class);
 
     // Config: Smart Contracts directory relative to Backend
     // Assuming we run backend from 'backend/' folder.
@@ -38,7 +42,7 @@ public class BlockchainService {
             String output = runHardhatScript("check", fileHash, "0");
             return output.contains("ACCESS_GRANTED");
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Error checking access for file hash: {}", fileHash, e);
             return false;
         }
     }
