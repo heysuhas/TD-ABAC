@@ -33,20 +33,54 @@ public class BlockchainService {
     private String contractAddress = ""; // loaded dynamically
     private long lastModifiedTime = 0; // cache invalidation timestamp
 
-    public void uploadFile(String fileHash, long duration) throws Exception {
+    public void uploadFile(String fileHash, long duration, String userAddress, String privateKey) throws Exception {
         loadAddress();
-        runHardhatScript("upload", fileHash, String.valueOf(duration));
+        runHardhatScript("upload", fileHash, String.valueOf(duration), userAddress, null, privateKey);
     }
 
-    public boolean checkAccess(String fileHash) {
+    public boolean checkAccess(String fileHash, String userAddress) {
         try {
             loadAddress();
-            String output = runHardhatScript("check", fileHash, "0");
+            String output = runHardhatScript("check", fileHash, "0", userAddress, null, null);
             return output.contains("ACCESS_GRANTED");
         } catch (Exception e) {
             logger.error("Error checking access on blockchain for hash: {}", fileHash, e);
             return false;
         }
+    }
+
+    public void shareFile(String fileHash, String ownerAddress, String shareWithAddress, String privateKey) throws Exception {
+        loadAddress();
+        runHardhatScript("share", fileHash, "0", ownerAddress, shareWithAddress, privateKey);
+    }
+
+    public String[] getUserFiles(String userAddress) throws Exception {
+        loadAddress();
+        String output = runHardhatScript("getUserFiles", "", "0", userAddress, null, null);
+        return parseArrayOutput(output);
+    }
+
+    public String[] getSharedFiles(String userAddress) throws Exception {
+        loadAddress();
+        String output = runHardhatScript("getSharedFiles", "", "0", userAddress, null, null);
+        return parseArrayOutput(output);
+    }
+
+    private String[] parseArrayOutput(String output) {
+        String marker = "ARRAY_RESULT:";
+        int idx = output.indexOf(marker);
+        if (idx != -1) {
+            String arrStr = output.substring(idx + marker.length()).trim();
+            // Handle output like "[hash1, hash2]"
+            if (arrStr.startsWith("[") && arrStr.endsWith("]")) {
+                arrStr = arrStr.substring(1, arrStr.length() - 1);
+            }
+            if (arrStr.isEmpty()) {
+                return new String[0];
+            }
+            return arrStr.split(",\\s*");
+        }
+        return new String[0];
     }
 
     private void loadAddress() throws Exception {
@@ -64,19 +98,22 @@ public class BlockchainService {
         }
     }
 
-    private String runHardhatScript(String command, String hash, String duration) throws Exception {
+    private String runHardhatScript(String command, String hash, String duration, String userAddress, String shareWithAddress, String privateKey) throws Exception {
         logger.info("Executing Hardhat Command: {} for {}", command, hash);
 
         // Use Environment Variables to pass data to the script
         // This avoids Hardhat CLI argument parsing issues entirely.
         ProcessBuilder builder = new ProcessBuilder(
-                "cmd.exe", "/c", "npx hardhat run scripts/interact.js --network localhost");
+                "sh", "-c", "npx hardhat run scripts/interact.js --network localhost");
         builder.directory(new File(WORKING_DIR));
 
         java.util.Map<String, String> env = builder.environment();
         env.put("CMD", command);
         env.put("FILE_HASH", hash);
         env.put("DURATION", duration);
+        env.put("USER_ADDRESS", userAddress != null ? userAddress : "");
+        env.put("SHARE_WITH_ADDRESS", shareWithAddress != null ? shareWithAddress : "");
+        env.put("PRIVATE_KEY", privateKey != null ? privateKey : "");
         env.put("CONTRACT_ADDRESS", contractAddress);
 
         Process process = builder.start();
