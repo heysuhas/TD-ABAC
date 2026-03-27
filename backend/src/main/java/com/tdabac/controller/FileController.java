@@ -3,10 +3,12 @@ package com.tdabac.controller;
 import com.tdabac.service.BlockchainService;
 import com.tdabac.service.EncryptionService;
 import com.tdabac.service.IPFSService;
+import org.springframework.http.ContentDisposition;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.http.ResponseEntity;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -135,8 +137,12 @@ public class FileController {
             byte[] decryptedBytes = encryptionService.decrypt(metadata.encryptedContent, key);
 
             // 4. Return the ACTUAL file
+            ContentDisposition contentDisposition = ContentDisposition.attachment()
+                    .filename(metadata.originalFilename, StandardCharsets.UTF_8)
+                    .build();
+
             return ResponseEntity.ok()
-                    .header("Content-Disposition", "attachment; filename=\"" + metadata.originalFilename + "\"")
+                    .header("Content-Disposition", contentDisposition.toString())
                     .header("Content-Type", metadata.contentType)
                     .body(decryptedBytes);
 
@@ -200,8 +206,12 @@ public class FileController {
 
             viewTokens.remove(token);
 
+            ContentDisposition contentDisposition = ContentDisposition.inline()
+                    .filename(metadata.originalFilename, StandardCharsets.UTF_8)
+                    .build();
+
             return ResponseEntity.ok()
-                    .header("Content-Disposition", "inline; filename=\"" + metadata.originalFilename + "\"")
+                    .header("Content-Disposition", contentDisposition.toString())
                     .header("Content-Type", metadata.contentType)
                     .body(decryptedBytes);
 
