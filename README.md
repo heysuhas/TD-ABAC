@@ -145,6 +145,13 @@ npm run dev
 ```
 Access the UI at `http://localhost:5173`.*
 
+### step 4: Check with frontend/.env
+```bash
+VITE_SUPABASE_URL=https://hxsvnpqfigkmpfzembcz.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4c3ZucHFmaWdrbXBmemVtYmN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1OTE1MjEsImV4cCI6MjA5MDE2NzUyMX0.X3PfN4YDGdyTuh8RyevZQqiYB3Y5yrlNTqExNAZZ-QA
+VITE_BACKEND_URL=http://localhost:8080/api
+```
+
 ## 7. Verification & Benchmarks
 ### Encryption Speed (Target: <5ms for small chunks; 1MB is hardware-dependent)
 Run the Java Benchmark:
