@@ -17,15 +17,16 @@ A "Self-Destructing" Digital Vault for Electronic Health Records.
 - **Middleware:** Web3j (Java <-> Ethereum)
 
 ## 3. Architecture Overview
-1.  **Client:** Uploads file & duration.
-2.  **Backend:**
-    - Generates AES Key.
-    - Encrypts File.
+1.  **Authentication (Supabase):** Users authenticate via Supabase to obtain verifiable identities.
+2.  **Client:** Uploads file & sets baseline active duration, or manages sharing permissions.
+3.  **Backend:**
+    - Generates AES Key & Encrypts File.
     - Uploads Encrypted Blob to IPFS.
-    - Calls Smart Contract `uploadFile(fileHash, duration)`.
-3.  **Smart Contract:** Stores metadata & expiry timestamp.
-4.  **Access:**
-    - Backend checks `checkAccess(fileHash)`.
+    - Calls Smart Contract `uploadFile(fileHash, duration)` or `shareFile(...)` for collaborators.
+    - Interfaces with an Email Service to send secure access links upon sharing.
+4.  **Smart Contract:** Stores file metadata and maintains per-user `shareExpiry` mappings.
+5.  **Access:**
+    - Backend calls `checkAccess(fileHash, userAddress)` to verify ownership or unexpired share status.
     - If `true`, Backend decrypts and serves file.
     - If `false`, Access Denied.
 
@@ -53,30 +54,38 @@ Focus on what is *technically new* versus the base paper and why it matters:
 
 ## 6. How It Works (Architecture & Data Flow)
 
-This project uses a **Hybrid Architecture** to combine the speed of off-chain storage with the security of on-chain access control.
+This project uses a **Hybrid Architecture** to combine the speed of off-chain storage with the security of on-chain access control, paired with a robust authentication and notification layer.
 
-### Step 1: Upload (Frontend -> Backend -> Blockchain)
-1.  **User** selects a file (e.g., `report.pdf`) and sets a timer (e.g., "10 minutes") in the React Frontend.
-2.  **Frontend** sends the file to the **Spring Boot Backend**.
-3.  **Backend** generates a random **AES-256 Key** and encrypts the file.
+### Step 1: Authentication & Upload (Frontend -> Backend -> Blockchain)
+1.  **User** logs in using **Supabase Auth** on the React Frontend, linking their email to a session.
+2.  **User** selects a file (e.g., `report.pdf`) and sets an initial duration (e.g., "10 minutes").
+3.  **Frontend** sends the file and the user's Ethereum address to the **Spring Boot Backend**.
+4.  **Backend** generates a random **AES-256 Key** and encrypts the file.
     *   *Note:* The original file is never stored unencrypted.
-4.  **Backend** uploads the *Encrypted Data* to IPFS (Simulated) and stores the *Key* temporarily in memory.
-5.  **Backend** calls the **Smart Contract** (`TDABAC.sol`) to register the file:
-    *   Mapping: `FileHash -> {Owner, ExpiryTimestamp}`.
-    *   The `ExpiryTimestamp` is calculated as `block.timestamp + duration`.
+5.  **Backend** uploads the *Encrypted Data* to IPFS (Simulated) and stores the *Key* temporarily in memory.
+6.  **Backend** calls the **Smart Contract** (`TDABAC.sol`) to register the file:
+    *   Global Metadata: `FileHash -> {Owner, ExpiryTimestamp}`.
+    *   User Files: Maps the owner's address to the `FileHash` to track owned files.
 
-### Step 2: Access (Frontend -> Backend -> Smart Contract -> Decrypt)
-1.  **User** requests access using the File Hash.
-2.  **Backend** asks the **Smart Contract**: "Is the current block time < ExpiryTimestamp?"
-3.  **Smart Contract** returns `true` or `false`.
-    *   *Crucial:* This check is **O(1)** (Constant Time) and costs **0 Gas** (View Function).
-4.  **If Allowed:**
+### Step 2: Secure File Sharing & Notifications (Frontend -> Backend -> Blockchain & Email)
+1.  **Owner** decides to share a file. They specify a `recipientEmail`, a `shareWithAddress`, and a custom `duration`.
+2.  **Backend** calls the Smart Contract's `shareFile` method:
+    *   Updates `shareExpiry[fileHash][shareWithAddress] = block.timestamp + duration`.
+    *   Tracks the file in the recipient's `sharedFiles` array.
+3.  **Backend** uses the **Email Service** (JavaMailSender/SMTP) to automatically dispatch an invitation incorporating a direct access link to the `recipientEmail`.
+
+### Step 3: Access Control & Passive Revocation (Frontend -> Backend -> Smart Contract -> Decrypt)
+1.  **Recipient** clicks the email link or requests access via the Dashboard using their authenticated address.
+2.  **Backend** asks the **Smart Contract**: `checkAccess(fileHash, userAddress)`.
+    *   The Contract strictly verifies: Is this the Owner? OR Is `block.timestamp < shareExpiry[fileHash][userAddress]`?
+    *   *Crucial:* This per-user check is **O(1)** (Constant Time) and costs **0 Gas** (View Function).
+3.  **If Allowed:**
     *   Backend retrieves the Encrypted File and the Key.
     *   Backend **Decrypts** the file in memory.
-    *   Backend sends the **Original File** back to the Frontend for download.
-5.  **If Denied (Expired):**
+    *   Backend grants access (either direct download or inline view token).
+4.  **If Denied (Expired):**
     *   Backend rejects the request.
-    *   The file remains encrypted and logically "destroyed" because the permission is gone forever.
+    *   Revocation is **Passive**—zero gas is spent to remove access. Once the window lapses, the file remains cryptographically locked away.
 
 ---
 
