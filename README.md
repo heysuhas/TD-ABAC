@@ -144,7 +144,7 @@ npm install
 ```
 
 **Configure Environment Variables:**
-You need to provide your Supabase credentials to run the frontend. Create a `.env` file in the `frontend/` directory (this file will not be pushed to GitHub) and add the following lines:
+You need to provide your Supabase credentials to run the frontend. Create a `.env` file in the `frontend/` directory (**Note: this file must be created manually as it will not be pushed to GitHub**) and add the following lines exactly:
 ```env
 VITE_SUPABASE_URL=YOUR_SUPABASE_PROJECT_URL
 VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
