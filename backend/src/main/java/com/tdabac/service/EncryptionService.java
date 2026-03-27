@@ -23,6 +23,15 @@ public class EncryptionService {
         return keyGen.generateKey();
     }
 
+    public String keyToString(SecretKey secretKey) {
+        return Base64.getEncoder().encodeToString(secretKey.getEncoded());
+    }
+
+    public SecretKey stringToKey(String encodedKey) {
+        byte[] decodedKey = Base64.getDecoder().decode(encodedKey);
+        return new javax.crypto.spec.SecretKeySpec(decodedKey, 0, decodedKey.length, "AES");
+    }
+
     public String encrypt(byte[] fileData, SecretKey secretKey) throws Exception {
         byte[] iv = new byte[IV_LENGTH_BYTE];
         SECURE_RANDOM.nextBytes(iv);

@@ -4,6 +4,8 @@ import com.tdabac.service.BlockchainService;
 import com.tdabac.service.EncryptionService;
 import com.tdabac.service.IPFSService;
 import org.springframework.http.ContentDisposition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.http.ResponseEntity;
@@ -72,7 +74,8 @@ public class FileController {
 
     @PostMapping("/upload")
     public ResponseEntity<?> uploadFile(@RequestParam("file") MultipartFile file,
-            @RequestParam("duration") Long duration) {
+            @RequestParam("duration") Long duration, @RequestParam(value = "userAddress", required = false) String userAddress,
+            @RequestParam(value = "privateKey", required = false) String privateKey) {
         try {
             // 1. Generate Key
             javax.crypto.SecretKey key = encryptionService.generateKey();
@@ -90,7 +93,7 @@ public class FileController {
             keyStore.put(fileHash, key);
 
             // 5. Register on Blockchain
-            blockchainService.uploadFile(fileHash, duration);
+            blockchainService.uploadFile(fileHash, duration, userAddress, privateKey);
 
             // 6. Return response
             java.util.Map<String, Object> response = new java.util.HashMap<>();
@@ -106,9 +109,9 @@ public class FileController {
     }
 
     @GetMapping("/access/{fileHash}")
-    public ResponseEntity<?> accessFile(@PathVariable String fileHash) {
+    public ResponseEntity<?> accessFile(@PathVariable String fileHash, @RequestParam(value = "userAddress", required = false) String userAddress) {
         // 1. Check Blockchain Time-Lock
-        boolean accessAllowed = blockchainService.checkAccess(fileHash);
+        boolean accessAllowed = blockchainService.checkAccess(fileHash, userAddress);
 
         if (!accessAllowed) {
             return ResponseEntity.status(403).body("Access Denied: Time-Lock Expired on Blockchain");
@@ -146,8 +149,8 @@ public class FileController {
     }
 
     @PostMapping("/files/{fileHash}/view-token")
-    public ResponseEntity<?> createViewToken(@PathVariable String fileHash) {
-        boolean accessAllowed = blockchainService.checkAccess(fileHash);
+    public ResponseEntity<?> createViewToken(@PathVariable String fileHash, @RequestParam(value = "userAddress", required = false) String userAddress) {
+        boolean accessAllowed = blockchainService.checkAccess(fileHash, userAddress);
 
         if (!accessAllowed) {
             return ResponseEntity.status(403).body("Access Denied: Time-Lock Expired on Blockchain");
@@ -173,7 +176,7 @@ public class FileController {
     }
 
     @GetMapping("/files/{fileHash}/view")
-    public ResponseEntity<?> viewFile(@PathVariable String fileHash, @RequestParam("token") String token) {
+    public ResponseEntity<?> viewFile(@PathVariable String fileHash, @RequestParam("token") String token, @RequestParam(value = "userAddress", required = false) String userAddress) {
         ViewToken viewToken = viewTokens.get(token);
 
         if (viewToken == null || viewToken.isExpired()) {
@@ -185,7 +188,7 @@ public class FileController {
             return ResponseEntity.status(403).body("View token does not match requested file");
         }
 
-        boolean accessAllowed = blockchainService.checkAccess(fileHash);
+        boolean accessAllowed = blockchainService.checkAccess(fileHash, userAddress);
         if (!accessAllowed) {
             return ResponseEntity.status(403).body("Access Denied: Time-Lock Expired on Blockchain");
         }
@@ -219,5 +222,56 @@ public class FileController {
             logger.error("Error during file view for hash: {}", fileHash, e);
             return ResponseEntity.internalServerError().body("Error: An internal server error occurred");
         }
+    }
+
+    @PostMapping("/files/{fileHash}/share")
+    public ResponseEntity<?> shareFile(@PathVariable String fileHash,
+            @RequestParam("ownerAddress") String ownerAddress,
+            @RequestParam("shareWithAddress") String shareWithAddress,
+            @RequestParam(value = "privateKey", required = false) String privateKey) {
+        try {
+            blockchainService.shareFile(fileHash, ownerAddress, shareWithAddress, privateKey);
+            Map<String, String> response = new HashMap<>();
+            response.put("status", "success");
+            response.put("message", "File shared successfully");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error sharing file on blockchain for hash: {}", fileHash, e);
+            return ResponseEntity.internalServerError().body("Error sharing file");
+        }
+    }
+
+    @GetMapping("/user/{userAddress}/files")
+    public ResponseEntity<?> getUserFiles(@PathVariable String userAddress) {
+        try {
+            String[] files = blockchainService.getUserFiles(userAddress);
+            return ResponseEntity.ok(files);
+        } catch (Exception e) {
+            logger.error("Error fetching user files for address: {}", userAddress, e);
+            return ResponseEntity.internalServerError().body("Error fetching user files");
+        }
+    }
+
+    @GetMapping("/user/{userAddress}/shared-files")
+    public ResponseEntity<?> getSharedFiles(@PathVariable String userAddress) {
+        try {
+            String[] files = blockchainService.getSharedFiles(userAddress);
+            return ResponseEntity.ok(files);
+        } catch (Exception e) {
+            logger.error("Error fetching shared files for address: {}", userAddress, e);
+            return ResponseEntity.internalServerError().body("Error fetching shared files");
+        }
+    }
+
+    @GetMapping("/files/{fileHash}/metadata")
+    public ResponseEntity<?> getFileMetadata(@PathVariable String fileHash) {
+        FileMetadata metadata = mockStorage.get(fileHash);
+        if (metadata == null) {
+            return ResponseEntity.status(404).body("File not found");
+        }
+        Map<String, String> response = new HashMap<>();
+        response.put("filename", metadata.originalFilename);
+        response.put("contentType", metadata.contentType);
+        return ResponseEntity.ok(response);
     }
 }

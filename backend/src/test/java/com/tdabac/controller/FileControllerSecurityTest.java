@@ -53,10 +53,10 @@ public class FileControllerSecurityTest {
         mockStorage.put(fileHash, metadata);
         keyStore.put(fileHash, new SecretKeySpec(new byte[16], "AES"));
 
-        when(blockchainService.checkAccess(anyString())).thenReturn(true);
+        when(blockchainService.checkAccess(anyString(), any())).thenReturn(true);
         when(encryptionService.decrypt(anyString(), any())).thenReturn(content);
 
-        ResponseEntity<?> response = fileController.accessFile(fileHash);
+        ResponseEntity<?> response = fileController.accessFile(fileHash, "0x00");
 
         String contentDisposition = response.getHeaders().getFirst("Content-Disposition");
         System.out.println("Content-Disposition: " + contentDisposition);
@@ -93,10 +93,10 @@ public class FileControllerSecurityTest {
                 .newInstance(fileHash, System.currentTimeMillis() + 60000);
         viewTokens.put(token, viewToken);
 
-        when(blockchainService.checkAccess(anyString())).thenReturn(true);
+        when(blockchainService.checkAccess(anyString(), any())).thenReturn(true);
         when(encryptionService.decrypt(anyString(), any())).thenReturn(content);
 
-        ResponseEntity<?> response = fileController.viewFile(fileHash, token);
+        ResponseEntity<?> response = fileController.viewFile(fileHash, token, "0x00");
 
         String contentDisposition = response.getHeaders().getFirst("Content-Disposition");
         System.out.println("Content-Disposition: " + contentDisposition);

@@ -4,8 +4,11 @@ const { time } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 
 describe("TDABAC Scalability", function () {
     let tdabac;
+    let owner;
 
     before(async function () {
+        const signers = await ethers.getSigners();
+        owner = signers[0];
         tdabac = await ethers.deployContract("TDABAC");
         await tdabac.waitForDeployment();
     });
@@ -18,14 +21,14 @@ describe("TDABAC Scalability", function () {
         await tdabac.uploadFile("QmHash2", 315360000);
 
         // Measure Gas for checking Hash1
-        const tx1 = await tdabac.checkAccess.staticCall("QmHash1");
+        const tx1 = await tdabac.checkAccess.staticCall("QmHash1", owner.address);
         // Note: staticCall doesn't spend gas but estimates. To measure checks we usually look at logic.
         // Solidity `view` functions don't cost gas when called externally, but cost execution gas internally.
 
         console.log("CheckAccess verified for both short and long duration.");
         expect(tx1).to.equal(true);
 
-        const tx2 = await tdabac.checkAccess.staticCall("QmHash2");
+        const tx2 = await tdabac.checkAccess.staticCall("QmHash2", owner.address);
         expect(tx2).to.equal(true);
 
         // Logical proof: The function checkAccess does:

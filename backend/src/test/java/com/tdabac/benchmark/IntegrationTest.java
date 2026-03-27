@@ -42,7 +42,7 @@ public class IntegrationTest {
         // To be sure, we can inspect logs if we capture them, but here we just want to
         // ensure NO EXCEPTION.
 
-        boolean result = service.checkAccess(dummyHash);
+        boolean result = service.checkAccess(dummyHash, "0x0000000000000000000000000000000000000000");
 
         // If we got here, the process likely ran.
         // If the process crashed with HH308, BlockchainService prints stack trace but
