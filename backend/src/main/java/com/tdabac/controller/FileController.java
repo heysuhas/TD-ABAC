@@ -103,17 +103,6 @@ public class FileController {
         }
     }
 
-    private ResponseEntity<?> checkFileAvailability(String fileHash) {
-        if (!keyStore.containsKey(fileHash)) {
-            return ResponseEntity.status(404).body("File Key not found (Server Restarted?)");
-        }
-
-        if (!mockStorage.containsKey(fileHash)) {
-            return ResponseEntity.status(404).body("File Content not found (Server Restarted?)");
-        }
-        return null;
-    }
-
     @GetMapping("/access/{fileHash}")
     public ResponseEntity<?> accessFile(@PathVariable String fileHash) {
         // 1. Check Blockchain Time-Lock
@@ -124,14 +113,16 @@ public class FileController {
         }
 
         try {
-            ResponseEntity<?> errorResponse = checkFileAvailability(fileHash);
-            if (errorResponse != null) {
-                return errorResponse;
+            // 2. Retrieve Data (Atomic check-and-get to avoid redundant lookups)
+            SecretKey key = keyStore.get(fileHash);
+            if (key == null) {
+                return ResponseEntity.status(404).body("File Key not found (Server Restarted?)");
             }
 
-            // 2. Retrieve Data
             FileMetadata metadata = mockStorage.get(fileHash);
-            SecretKey key = keyStore.get(fileHash);
+            if (metadata == null) {
+                return ResponseEntity.status(404).body("File Content not found (Server Restarted?)");
+            }
 
             // 3. Decrypt
             byte[] decryptedBytes = encryptionService.decrypt(metadata.encryptedContent, key);
@@ -160,9 +151,12 @@ public class FileController {
             return ResponseEntity.status(403).body("Access Denied: Time-Lock Expired on Blockchain");
         }
 
-        ResponseEntity<?> errorResponse = checkFileAvailability(fileHash);
-        if (errorResponse != null) {
-            return errorResponse;
+        // Check availability with minimal lookups
+        if (!keyStore.containsKey(fileHash)) {
+            return ResponseEntity.status(404).body("File Key not found (Server Restarted?)");
+        }
+        if (!mockStorage.containsKey(fileHash)) {
+            return ResponseEntity.status(404).body("File Content not found (Server Restarted?)");
         }
 
         String token = UUID.randomUUID().toString();
@@ -195,13 +189,17 @@ public class FileController {
         }
 
         try {
-            ResponseEntity<?> errorResponse = checkFileAvailability(fileHash);
-            if (errorResponse != null) {
-                return errorResponse;
+            // Retrieve Data (Atomic check-and-get to avoid redundant lookups)
+            SecretKey key = keyStore.get(fileHash);
+            if (key == null) {
+                return ResponseEntity.status(404).body("File Key not found (Server Restarted?)");
             }
 
             FileMetadata metadata = mockStorage.get(fileHash);
-            SecretKey key = keyStore.get(fileHash);
+            if (metadata == null) {
+                return ResponseEntity.status(404).body("File Content not found (Server Restarted?)");
+            }
+
             byte[] decryptedBytes = encryptionService.decrypt(metadata.encryptedContent, key);
 
             viewTokens.remove(token);
