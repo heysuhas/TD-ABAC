@@ -1,5 +1,7 @@
 package com.tdabac.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -8,6 +10,8 @@ import java.io.File;
 
 @Service
 public class BlockchainService {
+
+    private static final Logger logger = LoggerFactory.getLogger(BlockchainService.class);
 
     // Config: Smart Contracts directory relative to Backend
     // Assuming we run backend from 'backend/' folder.
@@ -38,7 +42,7 @@ public class BlockchainService {
             String output = runHardhatScript("check", fileHash, "0");
             return output.contains("ACCESS_GRANTED");
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("Error checking access on blockchain for hash: {}", fileHash, e);
             return false;
         }
     }
@@ -59,7 +63,7 @@ public class BlockchainService {
     }
 
     private String runHardhatScript(String command, String hash, String duration) throws Exception {
-        System.out.println("Executing Hardhat Command: " + command + " for " + hash);
+        logger.info("Executing Hardhat Command: {} for {}", command, hash);
 
         // Use Environment Variables to pass data to the script
         // This avoids Hardhat CLI argument parsing issues entirely.
@@ -84,12 +88,12 @@ public class BlockchainService {
         // Read Stdout
         while ((line = reader.readLine()) != null) {
             output.append(line).append("\n");
-            System.out.println("[Hardhat Output]: " + line);
+            logger.info("[Hardhat Output]: {}", line);
         }
 
         // Read Stderr
         while ((line = errorReader.readLine()) != null) {
-            System.err.println("[Hardhat Error]: " + line);
+            logger.error("[Hardhat Error]: {}", line);
         }
 
         // Increased timeout to 60 seconds to account for slow startup
