@@ -3,12 +3,12 @@ package com.tdabac.controller;
 import com.tdabac.service.BlockchainService;
 import com.tdabac.service.EncryptionService;
 import com.tdabac.service.IPFSService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.http.ContentDisposition;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.http.ResponseEntity;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -105,17 +105,6 @@ public class FileController {
         }
     }
 
-    private ResponseEntity<?> checkFileAvailability(String fileHash) {
-        if (!keyStore.containsKey(fileHash)) {
-            return ResponseEntity.status(404).body("File Key not found (Server Restarted?)");
-        }
-
-        if (!mockStorage.containsKey(fileHash)) {
-            return ResponseEntity.status(404).body("File Content not found (Server Restarted?)");
-        }
-        return null;
-    }
-
     @GetMapping("/access/{fileHash}")
     public ResponseEntity<?> accessFile(@PathVariable String fileHash) {
         // 1. Check Blockchain Time-Lock
@@ -126,21 +115,27 @@ public class FileController {
         }
 
         try {
-            ResponseEntity<?> errorResponse = checkFileAvailability(fileHash);
-            if (errorResponse != null) {
-                return errorResponse;
+            // 2. Retrieve Data (Atomic check-and-get to avoid redundant lookups)
+            SecretKey key = keyStore.get(fileHash);
+            if (key == null) {
+                return ResponseEntity.status(404).body("File Key not found (Server Restarted?)");
             }
 
-            // 2. Retrieve Data
             FileMetadata metadata = mockStorage.get(fileHash);
-            SecretKey key = keyStore.get(fileHash);
+            if (metadata == null) {
+                return ResponseEntity.status(404).body("File Content not found (Server Restarted?)");
+            }
 
             // 3. Decrypt
             byte[] decryptedBytes = encryptionService.decrypt(metadata.encryptedContent, key);
 
             // 4. Return the ACTUAL file
+            ContentDisposition contentDisposition = ContentDisposition.attachment()
+                    .filename(metadata.originalFilename, StandardCharsets.UTF_8)
+                    .build();
+
             return ResponseEntity.ok()
-                    .header("Content-Disposition", "attachment; filename=\"" + metadata.originalFilename + "\"")
+                    .header("Content-Disposition", contentDisposition.toString())
                     .header("Content-Type", metadata.contentType)
                     .body(decryptedBytes);
 
@@ -158,9 +153,12 @@ public class FileController {
             return ResponseEntity.status(403).body("Access Denied: Time-Lock Expired on Blockchain");
         }
 
-        ResponseEntity<?> errorResponse = checkFileAvailability(fileHash);
-        if (errorResponse != null) {
-            return errorResponse;
+        // Check availability with minimal lookups
+        if (!keyStore.containsKey(fileHash)) {
+            return ResponseEntity.status(404).body("File Key not found (Server Restarted?)");
+        }
+        if (!mockStorage.containsKey(fileHash)) {
+            return ResponseEntity.status(404).body("File Content not found (Server Restarted?)");
         }
 
         String token = UUID.randomUUID().toString();
@@ -193,19 +191,27 @@ public class FileController {
         }
 
         try {
-            ResponseEntity<?> errorResponse = checkFileAvailability(fileHash);
-            if (errorResponse != null) {
-                return errorResponse;
+            // Retrieve Data (Atomic check-and-get to avoid redundant lookups)
+            SecretKey key = keyStore.get(fileHash);
+            if (key == null) {
+                return ResponseEntity.status(404).body("File Key not found (Server Restarted?)");
             }
 
             FileMetadata metadata = mockStorage.get(fileHash);
-            SecretKey key = keyStore.get(fileHash);
+            if (metadata == null) {
+                return ResponseEntity.status(404).body("File Content not found (Server Restarted?)");
+            }
+
             byte[] decryptedBytes = encryptionService.decrypt(metadata.encryptedContent, key);
 
             viewTokens.remove(token);
 
+            ContentDisposition contentDisposition = ContentDisposition.inline()
+                    .filename(metadata.originalFilename, StandardCharsets.UTF_8)
+                    .build();
+
             return ResponseEntity.ok()
-                    .header("Content-Disposition", "inline; filename=\"" + metadata.originalFilename + "\"")
+                    .header("Content-Disposition", contentDisposition.toString())
                     .header("Content-Type", metadata.contentType)
                     .body(decryptedBytes);
 

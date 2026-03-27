@@ -16,6 +16,7 @@ public class EncryptionService {
     private static final int TAG_LENGTH_BIT = 128; // Must be one of {128, 120, 112, 104, 96}
     private static final int IV_LENGTH_BYTE = 12;
     private static final int AES_KEY_BIT = 256;
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     public SecretKey generateKey() throws Exception {
         KeyGenerator keyGen = KeyGenerator.getInstance("AES");
@@ -25,7 +26,7 @@ public class EncryptionService {
 
     public String encrypt(byte[] fileData, SecretKey secretKey) throws Exception {
         byte[] iv = new byte[IV_LENGTH_BYTE];
-        new SecureRandom().nextBytes(iv);
+        SECURE_RANDOM.nextBytes(iv);
 
         Cipher cipher = Cipher.getInstance(ALGO);
         cipher.init(Cipher.ENCRYPT_MODE, secretKey, new GCMParameterSpec(TAG_LENGTH_BIT, iv));
