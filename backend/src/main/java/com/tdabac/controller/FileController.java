@@ -3,6 +3,8 @@ package com.tdabac.controller;
 import com.tdabac.service.BlockchainService;
 import com.tdabac.service.EncryptionService;
 import com.tdabac.service.IPFSService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +20,8 @@ import javax.crypto.SecretKey;
 @RequestMapping("/api")
 @CrossOrigin(origins = "*") // Allow Frontend access
 public class FileController {
+
+    private static final Logger logger = LoggerFactory.getLogger(FileController.class);
 
     private final EncryptionService encryptionService;
     private final IPFSService ipfsService;
@@ -96,8 +100,8 @@ public class FileController {
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.internalServerError().body("Error: " + e.getMessage());
+            logger.error("Error during file upload", e);
+            return ResponseEntity.internalServerError().body("Error: An internal server error occurred");
         }
     }
 
@@ -141,8 +145,8 @@ public class FileController {
                     .body(decryptedBytes);
 
         } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.internalServerError().body("Error: " + e.getMessage());
+            logger.error("Error during file access for hash: {}", fileHash, e);
+            return ResponseEntity.internalServerError().body("Error: An internal server error occurred");
         }
     }
 
@@ -206,8 +210,8 @@ public class FileController {
                     .body(decryptedBytes);
 
         } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.internalServerError().body("Error: " + e.getMessage());
+            logger.error("Error during file view for hash: {}", fileHash, e);
+            return ResponseEntity.internalServerError().body("Error: An internal server error occurred");
         }
     }
 }
