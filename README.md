@@ -150,9 +150,21 @@ Open a new terminal:
 ```bash
 cd frontend
 npm install
+```
+
+**Configure Environment Variables:**
+You need to provide your Supabase credentials to run the frontend. Create a `.env` file in the `frontend/` directory (**Note: this file must be created manually as it will not be pushed to GitHub**) and add the following lines exactly:
+```env
+VITE_SUPABASE_URL=YOUR_SUPABASE_PROJECT_URL
+VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+VITE_BACKEND_URL=http://localhost:8080/api
+```
+
+**Start the Development Server:**
+```bash
 npm run dev
 ```
-Access the UI at `http://localhost:5173`.*
+*Access the UI at `http://localhost:5173`.*
 
 ### step 4: Check with frontend/.env
 ```bash
