@@ -24,12 +24,23 @@ async function main() {
   let runId = 1;
 
   for (const duration of DURATIONS) {
+    const promises = [];
+
     for (let i = 0; i < MEASUREMENT_ITERATIONS; i++) {
       const fileHash = `QmBench-${duration}-${i}-${Date.now()}`;
+      promises.push(tdabac.uploadFile(fileHash, duration).then(tx => ({ tx, fileHash, duration })));
+    }
 
-      const uploadTx = await tdabac.uploadFile(fileHash, duration);
-      const uploadReceipt = await uploadTx.wait();
+    const txResults = await Promise.all(promises);
 
+    // Wait for all receipts concurrently so uploads are parallelized
+    const receiptResults = await Promise.all(txResults.map(async ({ tx, fileHash, duration }) => {
+      const uploadReceipt = await tx.wait();
+      return { uploadReceipt, fileHash, duration };
+    }));
+
+    // Execute the staticCall check sequentially to ensure timing accuracy
+    for (const { uploadReceipt, fileHash, duration } of receiptResults) {
       const uploadCalldataBytes = toCalldataBytes(tdabac.interface, "uploadFile", [fileHash, duration]);
       csvRows.push(line({
         run_id: runId++,
@@ -51,7 +62,7 @@ async function main() {
       const latencyMs = Number(end - start) / 1_000_000;
 
       if (!granted) {
-        throw new Error("Expected access to be granted during benchmark window.");
+        throw new Error(`Expected access to be granted during benchmark window for ${fileHash}.`);
       }
 
       csvRows.push(line({
